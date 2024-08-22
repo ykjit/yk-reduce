@@ -1,0 +1,18 @@
+#!/bin/sh
+
+set -eu
+
+# Check onelua.c contains basic stuff that needs to be present for the JIT to
+# be functional. This means we can reject obviously-going-to-fail stuff earlier
+# without invoking the AOT compiler or running the compiled binary to find out.
+grep yk_mt_control_point onelua.c
+grep yk_mt_new onelua.c
+
+# Build the reduced Lua.
+cp ~/research/yklua/reduce/Makefile .
+make -j1 onelua # -j1 because cvise is already running many instances
+                # of this script in parallel!
+
+# Run Lua and test if the interesting condition is met.
+cp ~/research/yk-benchmarks/awfy/Lua/* .
+timeout -s9 120s ./onelua harness.lua Havlak 1 1500 2>&1 | grep 'trace_builder.rs:544'
